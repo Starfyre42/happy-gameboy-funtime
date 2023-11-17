@@ -1,29 +1,36 @@
+; Include Hardware Defines
 INCLUDE "hardware.inc"
 
-SECTION "main", ROM0[$100]
+; Begin section of code where the gameboy boots into
+; This section is only 3 bytes in size
+SECTION "boot", ROM0[$100]
 
+    ; This instruction is 3 bytes, the exact size of this section
+    ; We use it to jump to a less cramped code section
     jp EntryPoint
-    
+
+    ; Fill in an area of rom with zeroes, this area is the gameboy header
     ds $150 - @, 0 ; Make room for the header
 
+// Real start of the code
 EntryPoint:
     ld a,0
-    ld [rNR52], a
+    ld [rNR52], a // Turn Audio off
 
 WaitVBlank:
     ld a, [rLY]
     cp 144
-    jp c, WaitVBlank 
+    jp c, WaitVBlank // Loop until the LCD screen is in VBlank (Past the bottom)
 
 LcdOff:
     ;turns off the lcd. is needed durning initialize
     ld a, 0
-    ld [rLCDC], a 
+    ld [rLCDC], a ; Power off LCD
 
 LoadTiles:
     ld de, Tiles
     ld hl, $9000
-    ld bc, TilesEnd - Tiles
+    ld bc, TilesEnd - Tiles ; Prepare to copy tiles from rom to video ram
 
 CopyTiles:
     ld a, [de]
@@ -32,12 +39,14 @@ CopyTiles:
     dec bc
     ld a, b
     or a, c
-    jp nz, CopyTiles
+    jp nz, CopyTiles ; Copy tiles from rom to video ram
 
-; Copy the tilemap
+; Prepare to copy tilemap from rom to video ram
 	ld de, Tilemap
 	ld hl, $9800
 	ld bc, TilemapEnd - Tilemap
+
+; Copy tilemap from rom to video ram
 CopyTilemap:
 	ld a, [de]
 	ld [hli], a
@@ -47,6 +56,7 @@ CopyTilemap:
 	or a, c
 	jp nz, CopyTilemap
 
+; Turn the LCD on and enable background tiles to show
 LcdOn:
 	ld a, LCDCF_ON | LCDCF_BGON
     ld [rLCDC], a
@@ -54,9 +64,11 @@ LcdOn:
     ld a, %11100100
 	ld [rBGP], a
 
+; Enter an infinite loop where we do nothing
 Done:
     jp Done
 
+; This contains the tiles to copy
 SECTION "Tile data", ROM0
 
 Tiles:
@@ -132,6 +144,7 @@ Tiles:
 	db $01,$ff, $80,$ff, $01,$ff, $80,$ff, $01,$ff, $80,$ff, $01,$ff, $00,$ff
 TilesEnd:
 
+; This ocntains the tilemap to copy
 SECTION "Tilemap", ROM0
 
 Tilemap:
